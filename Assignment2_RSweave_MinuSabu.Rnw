@@ -1,0 +1,285 @@
+\documentclass{article}
+
+\begin{document}
+
+
+\title {Graphing with ggplot2 using\\ employment and unemployment data in Illinois} 
+\author {Minu Sabu 
+\\ School of Information Technology 
+\\ Illinois State University
+\\
+\texttt{msabu@ilstu.edu}}
+\date{October 22, 2014} 
+\maketitle
+
+\section*{Introduction}
+One of the major factors that has played an important role throughout the ages and that impacts the well being of society is employment. It is defined as an activity in which one engages for paid work. The metrics that denotes the percentage of people employed to the total number of all individuals is called the employment rate. On the other hand, unemployment  occurs when people are without work and actively seeking work. The percentage of people unemployed to the total number of all individuals is called the unemployment rate. \\
+
+Illinois is one of the major states in the Midwestern United States. The population of Illinois in 2013 was 12,897,625, making Illinois the fifth largest state in the USA. So employment and unemployment rates in Illinois have been the focus of many studies and are therefore interesting. Illinois has the third worst unemployment rate in the nation. This can be attributed to factors like decline in the construction and manufacturing industries.\\
+
+To study employment and unemployment in Illinois, we are using the data from Quandl. Quandl is a search engine for numerical data. The U.S Bureau of Labor Statistics (BLS) is the government agency that maintains and publishes data regarding both employment and unemployment. BLS was started in 1884 with a focus on statistical data. Quandl collects employment and unemployment data from the BLS database. The rates of employment and unemployment are calculated from surveys of households performed throughout the state of Illinois. We will be using the OSEMN approach in data science. In this tutorial, OSEMN stands for Obtaining, Scrubbing, Exploring, More exploring, and graphiNg the data. Let us look at each step in detail.
+
+\section*{Obtaining the data}
+
+We will begin by obtaining data from Quandl using Quandl API. API stands for Application Programming Interface and is a collection of programming instructions and standards. It enables computer programs to directly communicate with one another. Many software companies release their APIs to the public and allow developers to create applications powered by their service. All data in Quandl is accessible via Quandl API. To use Quandl API in R Studio, we have to first install the \texttt{Quandl} package using the \texttt{Install Packages} option in the \texttt{Tools} menu. Once the package is installed, we have to load the package in R using the \texttt{library} command.
+
+<<c1>>=
+#loading the Quandl package 
+library(Quandl)
+@
+There is a daily limit of 50 downloads, or API calls, from Quandl for all unregistered users. In order to have unlimited downloads, we have to register by creating a free account at www.quandl.com. Quandl provides an authentication code to each user which gives unlimited access. We use the \texttt{Quandl.auth} command to add the unique authentication code.\\
+
+<<c2>>=
+#Authentication code will be different for each user
+Quandl.auth("K1ZsbnWM7k3sASX2x24S")
+@
+We can now collect data from Quandl and store it in a data frame. We use the \texttt{Quandl} function which pulls data using Quandl API. The argument in the function given below is the R library code for accessing the data from  Quandl. This will download the data directly to R. Let us start with the employment data and store it into a data frame called \emph{EmploymentRawData}. 
+
+<<c3>>=
+#Obtaining employment data from Quandl using Quandl function
+EmploymentRawData <- Quandl("BLSI/LAUST170000000000005",
+                         trim_start="2012-01-31",
+                         trim_end="2014-07-31")
+
+#Show EmploymentRawData
+head(EmploymentRawData)
+@
+
+We have a total of \Sexpr{nrow(EmploymentRawData)} observations and we are only viewing the first few using the \texttt{head} command.\\
+
+
+In the same way, let us collect the unemployment data from Quandl and store it into another data frame called \emph{UnemploymentRawData}.
+<<c4>>=
+  #Obtaining unemployment data from Quandl using Quandl function.
+UnemploymentRawData <- Quandl("BLSI/LAUST170000000000004",
+                           trim_start="2012-01-31",
+                           trim_end="2014-07-31")
+#show UnemploymentRawData
+head(UnemploymentRawData)
+@
+Again, we have a total of \Sexpr{nrow(UnemploymentRawData)} observations and we are only viewing the first few using the \texttt{head} command.\\ 
+
+
+\section*{Scrubbing the Data}
+The two data frames \emph{EmploymentRawData} and \emph{UnemploymentRawData} need to be combined into a single data frame. But before we merge them, we have to do some cleaning, also called scrubbing. A careful examination reveals that the second variable in both the data frames is named ``Value.'' This could cause duplicate variable names during merging. To avoid confusion, let us rename the two variables to specifically say ``Employment'' and ``Unemployment.''\\
+
+We use the \texttt{rename} function from the \texttt{plyr} package to rename the variables. It is always a good idea to keep the raw data intact for future reference. Therefore, let us store the modified data in a new data frame.
+<<c5>>=
+#Renaming variable name in EmploymentRawData
+EmploymentData<-plyr::rename(x=EmploymentRawData, 
+                             replace=c("Value"="Employment"))
+
+#Renaming variable name UnemploymentRawData
+UnemploymentData<-plyr::rename(x=UnemploymentRawData, 
+                               replace=c("Value"="Unemployment"))
+@
+The \texttt{x} argument in the above function specifies the data frame being renamed. The new variable names for the two data frames look like this:
+<<c6>>=
+#Column names for employment data
+names(EmploymentData)
+
+#Column data for unemployment data
+names(UnemploymentData)
+@
+Now we have our two data frames ready to be merged. We will use the \texttt{merge} command to merge the two data frames to a single data frame called \emph{CombinedData}. The \texttt{by} option will specify which field is used for merging them. Since ``Date'' variable is common for both the data frames, we will merge the data frames based on ``Date.''
+<<c7>>=
+#Merging the two data frames by "Date"
+CombinedData<-merge(x=EmploymentData, y=UnemploymentData, 
+                    by="Date")
+
+#show CombinedData
+head(CombinedData)
+@
+
+Therefore, scrubbing made it easier to read the merged data frame by giving  relevant variable names.\\
+
+\section*{Exploring the data}
+In this section, we will take a deeper look into our combined data. Our data is presented in a tabular format with three columns. The first column gives the date, the second column gives the number of people employed, and the third column gives the number of people unemployed.\\
+
+Let us begin by determining the data type of \emph{CombinedData} using the \texttt{class} function. 
+<<c8>>=
+#Displaying the data type of the merged data set
+class(CombinedData)
+@
+So, we can see that \emph{CombinedData} is a data frame. The \texttt{class} function can also be used to see the data type of each variable in the data frame. 
+<<c9>>= 
+#Displaying the type of each variable
+class(CombinedData$Date)
+
+class(CombinedData$Employment)
+
+class(CombinedData$Unemployment)
+@
+Cross checking with the data, we can see that our first variable stores the date and hence its data type is ``\Sexpr{class(CombinedData$Date)}''. The second and the third variables have the number of people employed and unemployed respectively. So, they have ``\Sexpr{class(CombinedData$Employment)}'' data type.\\ 
+
+Now let us examine the structure of \emph{CombinedData} using the \texttt{str} function. This function compactly displays the internal structure of an R object.
+<<c10>>=
+#Displaying the structure of the merged data set
+str(CombinedData)
+@
+The above result explains that we have a data frame with 31 observations and 3 variables. It also explains the type and format of each variable in the data frame.\\
+
+We can also examine the structure of each variable in the data frame separately. 
+<<c11>>=
+#Displaying the structure for each variable
+str(CombinedData$Date)
+
+str(CombinedData$Employment)
+
+str(CombinedData$Unemployment)
+@
+
+Next, let us display the statistical summary of our data using the \texttt{summary} function. This function will give details like the minimum and the maximum allowable values, mean, median and quartiles for each variable in the data frame.
+<<c12>>=
+#Displaying the summary of the full data set
+summary(CombinedData)
+@
+
+As we can see, the \texttt{summary} function gives the statistics of each variable. We can also display the statistics of each variable separately.
+<<c13>>=
+#Displaying the summary of each variable
+summary(CombinedData$Date)
+
+summary(CombinedData$Employment)
+
+summary(CombinedData$Unemployment)
+@
+Thus, we are able to get a deeper understanding of the data using these functions.\\
+
+\section*{Results}
+In this tutorial, we have been studying the trends in employment and unemployment in Illinois from January 2012 to July 2014. Let us take a look at our data.\\
+
+<<c14, echo=FALSE>>=
+#Displaying the Complete data set
+CombinedData
+@
+\begin{table}[htbp]
+\caption{Employment and unemployment data set}
+\label{fulltable}
+\end{table}
+
+As we can see, Table \ref{fulltable} shows the number of people employed and unemployed in the state of Illinois. A careful examination reveals that the number of employed people is much higher than the number of unemployed people in Illinois. There is no steady increase or decrease in the employment or unemployment rate over the time frame. But it can be noticed that there certain months of the year, like July and November, when more people have a job. To complement this, during these months, the number of people without a job decreases proportionately. \\
+
+So far, we have collected the data, cleaned, and prepared it for plotting. Graphical representation of data is called plotting. This makes it is easier to understand the data and gives us a clear picture of the pattern in which employment and unemployment varies over the given time frame. \\
+
+Now, let us begin plotting the data. Our complete data set is stored in the data frame called \emph{CombinedData}.  The data is stored in wide format in our data frame. To plot the values on a chart, we should convert the data from wide format to long format. This conversion can be made by using the \texttt{melt} function from the \texttt{reshape2} package. So, we should install and load the \texttt{reshape2} package to melt the data. \\
+<<c15>>=
+#loading the reshape2 package
+library(reshape2)
+#Melting the data frame based on "Date"
+MoltenData <- melt(data=CombinedData, id.vars="Date")
+#show MoltenData
+head(MoltenData)
+@
+
+The \texttt{data} argument in the above function specifies the data frame being melted.  The data frame has to be melted based on a given variable. This is specified in the \texttt{id.vars} argument. Objects created by \texttt{melt} are often referred to as ``molten'' data in the \emph{reshape2} documentation. That is why we gave our new data frame the name \emph{MoltenData}.
+
+Now, let us do some cleaning on the molten data. First, we will change the variable names to make it relevant to the data. 
+<<c16>>=
+#Renaming the two variables
+MoltenData<-plyr::rename(x=MoltenData, 
+                         replace=c("variable" = "Type",
+                                   "value" = "Number"))
+@
+In the above step, we replaced the second variable in \emph{MoltenData} called ``variable'' to ``Type''. Also, we changed the third variable ``value'' to ``Number''.
+Now, let us sort the data by ``Date'' and then by ``Type''.
+<<c17>>=
+# Sorting by Date, then by Type
+MoltenData<-MoltenData[order(MoltenData$Date, MoltenData$Type),]
+#show MoltenData after sorting
+head(MoltenData, 10)
+@
+Now, our data frame is ready to be plotted. Let us begin plotting by installing and loading all the required add-on packages. For plotting the data, we need to install the \texttt{ggplot2} package. The \texttt{scales} package defines the scale functions for the plot. Finally, \texttt{gridExtra} package specifies the high-level grid functions. Once all these packages are installed, we should load them in R using the \texttt{library} function.
+<<c18, message=FALSE>>=
+#loading all the packages needed for plotting
+library(ggplot2)
+library(scales)
+library(gridExtra)
+@
+We use the \texttt{ggplot} function to plot the chart. We can plot different types of charts using this function. In this tutorial, we are plotting a line chart.\\
+<<c19, eval=FALSE>>=
+#Plotting the combined data set
+ggplot(MoltenData, 
+       aes(as.Date(Date, "%e %b %Y"), Number, color = Type)) +
+  geom_line() + geom_point()+ 
+  scale_y_continuous(labels = comma) +  
+  xlab("Date") + ylab("Number of People")+ 
+  theme_bw(base_size = 15) 
+@
+
+Here, \emph{MoltenData} is the data frame in long format. In our plot, we have the date on the x-axis and the number of people employed or unemployed on the y-axis. So, we set the \emph{x} and \emph{y} axes using the ``Date'' and ``Number'' variables respectively. The \texttt{as.Date} function will format the given date to a specified format. The format is specified in its argument as \texttt{"\%e \%b \%Y"} which formats the date to``dd mmm yyyy" format. We also told \texttt{ggplot} that the lines should have different colors based on the ``Type'' of data they represent. \texttt{geom\_line} specifies that we want a line graph, and \texttt{geom\_point} specifies that each value on the line should be highlighted with a point. \texttt{scale\_y\_continuous} is used to format y-axis as a continuous-valued axis and \texttt{labels = comma} will apply a comma style to the ticks on the y-axis. \texttt{comma} style is defined in the \texttt{scales} package. So we should install and load the \texttt{scales} package to use it. \texttt{xlab} and \texttt{ylab} set the axes' labels. Finally, the function \texttt{theme\_bw} gives the plot a simple black and white theme. We added the argument \texttt{base\_size = 15} to increase the plot's font size. The above code produces a graph like this:\\
+<<c20, echo=FALSE, fig=TRUE, fig.width=10>>=
+#Plotting the merged data frame
+ggplot(MoltenData, 
+       aes(as.Date(Date, "%e %b %Y"), Number, color = Type)) +
+  geom_line() + geom_point()+ 
+  scale_y_continuous(labels = comma) +  
+  xlab("Date") + ylab("Number of People")+ 
+  theme_bw(base_size = 15) 
+@
+\begin{figure}[htbp]
+\caption{Employment and unemployment in Illinois plotted using the merged data set}
+\label{mergedfigure}
+\end{figure}
+
+Figure \ref{mergedfigure} shows the employment and unemployment trends for the state of Illinois from January 2012 to July 2014. It can be noticed that almost every year the employment rate increases before the middle of the first quarter and reaches a peak in July. Thus there are more jobs during the summer than the winter months early in the year. The employment rate tapers off in August. This could be attributed to the fact that students return back to school during that month after summer jobs. The employment rate then increases through the holiday season when the consumer and other retail industries hire more people for this period; after which it shows a downward trend into the beginning of the next year.\\
+
+We are not able to clearly understand the graphical pattern from Figure \ref{mergedfigure}. This is because we tried to plot the combined data frame.  But the large gap between the two numbers for a given date made the scale on the y-axis too big. Therefore, they look like two parallel lines.\\ 
+
+Let us see if we can try to generate a plot which will clearly show the variation in trend. Instead of plotting the combined data frame, we will plot two separate graphs, one for employment and the other for unemployment. We will then place the graphs one on top of the other. So, we have to generate two separate plots and give each of them a name. Let us call the top chart \texttt{g.top} and the bottom chart \texttt{g.bottom}. 
+<<c21, eval=FALSE>>=
+#plotting the employment data 
+g.top<-ggplot(EmploymentData, 
+              aes(as.Date(Date, "%e %b %Y"), Employment)) + 
+  geom_line() + geom_point() + 
+  scale_y_continuous(labels = comma) +
+  xlab("") +  
+  theme_bw()+
+  theme(axis.text.x = element_blank(),
+        plot.margin = unit(c(0,5,-26,1),units="points"))
+
+#plotting the unemployment data 
+g.bottom<-ggplot(UnemploymentData, 
+                 aes(as.Date(Date, "%e %b %Y"), Unemployment)) + 
+  geom_line() + geom_point() + 
+  scale_y_continuous(labels = comma) + 
+  xlab("Date")+ 
+  theme_bw() +
+  theme(plot.margin = unit(c(0,5,1,9),units="points")) 
+
+#Finally, arranging one plot on top of the other
+grid.arrange(g.top,g.bottom)
+@
+Both the graphs have the same x-axis. So we just need one x-axis for both the graphs to share. We will use the x-axis of the bottom plot. \texttt{axis.text.x = element\_blank()} will hide the x-axis markings on \texttt{g.top} which will make it look like they have only one x-axis. \texttt{plot.margin} adjusts the top, right, bottom and left margins for the plot measured in points. We adjusted the margins of both the plots to make them look like as shown in Figure \ref{separatefigure}.\\
+<<c22, echo=FALSE, fig=TRUE, fig.height=6>>=
+#plotting the Employment data
+g.top<-ggplot(EmploymentData, 
+              aes(as.Date(Date, "%e %b %Y"), Employment)) + 
+  geom_line() + geom_point() + 
+  scale_y_continuous(labels = comma) +
+  xlab("") +  
+  theme_bw()+
+  theme(axis.text.x = element_blank(),
+        plot.margin = unit(c(0,5,-26,1),units="points"))
+
+#plotting the unemployment data
+g.bottom<-ggplot(UnemploymentData, 
+                 aes(as.Date(Date, "%e %b %Y"), Unemployment)) + 
+  geom_line() + geom_point() + 
+  scale_y_continuous(labels = comma) + 
+  xlab("Date")+ 
+  theme_bw() +
+  theme(plot.margin = unit(c(0,5,1,9),units="points")) 
+
+#arranging one plot on top of the other
+grid.arrange(g.top,g.bottom)
+@
+\begin{figure}[htbp]
+\caption{Employment and unemployment in Illinois plotted separately for better pattern visibility}
+\label{separatefigure}
+\end{figure}
+The variation in trend is clearly visible now. It can be noticed that the bottom plot is almost a mirror image of the top plot. Therefore we can say that employment and unemployment complements each other. When more people get a job, unemployment level goes down and vice versa.
+\section*{Conclusion}
+In this tutorial, we studied how to create graphs in R using ggplot2. For this, we used the employment and unemployment data in Illinois for the last two years. The first step was to \textbf{O}btain the data from Quandl. This was followed by \textbf{S}crubbing or cleaning the data so that it can be displayed in both table and graph form. Then we \textbf{E}xplored the data, displayed the data in tabular form (\textbf{M}ore exploring). Finally, we plotted the data(graphi\textbf{N}g). Therefore, this completes all the OSEMN steps.
+
+\end{document}
